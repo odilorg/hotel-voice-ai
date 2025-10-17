@@ -252,7 +252,6 @@ async def entrypoint(ctx: JobContext):
         tts=openai.TTS(          # Text-to-Speech (cheap!)
             voice="alloy",       # Options: alloy, echo, fable, onyx, nova, shimmer
         ),
-        agent=agent,  # Pass our agent with function tools
     )
 
     # Event handlers for logging
@@ -277,7 +276,7 @@ async def entrypoint(ctx: JobContext):
     await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
 
     # Start the agent session
-    await session.start(ctx.room)
+    await session.start(room=ctx.room, agent=agent)
 
     # Initial greeting
     await session.say(
