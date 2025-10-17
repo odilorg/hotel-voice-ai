@@ -43,8 +43,11 @@ http_client = httpx.AsyncClient(
 )
 
 
-class HotelBookingAgent:
+class HotelBookingAgent(Agent):
     """Hotel booking voice agent with function tools"""
+
+    def __init__(self):
+        super().__init__(instructions=SYSTEM_PROMPT)
 
     @function_tool
     async def check_availability(
@@ -249,8 +252,7 @@ async def entrypoint(ctx: JobContext):
         tts=openai.TTS(          # Text-to-Speech (cheap!)
             voice="alloy",       # Options: alloy, echo, fable, onyx, nova, shimmer
         ),
-        instructions=SYSTEM_PROMPT,
-        fnc_ctx=agent,  # Pass our agent with function tools
+        agent=agent,  # Pass our agent with function tools
     )
 
     # Event handlers for logging
