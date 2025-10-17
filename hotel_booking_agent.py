@@ -1,6 +1,6 @@
 """
 Hotel Booking Voice Agent
-Based on LiveKit Tutorial - Simplified approach
+Based on LiveKit Agents Framework
 Leverages existing Laravel + Beds24 infrastructure
 """
 
@@ -16,8 +16,10 @@ from livekit.agents import (
     WorkerOptions,
     cli,
     llm,
+    Agent,
+    RoomIO,
+    AgentSession,
 )
-from livekit.agents.voice_assistant import VoiceAssistant
 from livekit.plugins import deepgram, openai, silero
 from dotenv import load_dotenv
 
@@ -228,8 +230,8 @@ async def entrypoint(ctx: JobContext):
     # Initialize the agent with tools
     agent = HotelBookingAgent()
 
-    # Create the voice assistant
-    assistant = VoiceAssistant(
+    # Create the agent session with proper pipeline configuration
+    session = AgentSession(
         vad=silero.VAD.load(),  # Voice Activity Detection
         stt=deepgram.STT(       # Speech-to-Text (FREE tier!)
             model="nova-2",
@@ -242,27 +244,24 @@ async def entrypoint(ctx: JobContext):
         tts=openai.TTS(          # Text-to-Speech (cheap!)
             voice="alloy",       # Options: alloy, echo, fable, onyx, nova, shimmer
         ),
-        chat_ctx=llm.ChatContext().append(
-            role="system",
-            text=SYSTEM_PROMPT,
-        ),
+        instructions=SYSTEM_PROMPT,
         fnc_ctx=agent,  # Pass our agent with function tools
     )
 
     # Event handlers for logging
-    @assistant.on("user_started_speaking")
+    @session.on("user_started_speaking")
     def on_user_started_speaking():
         print("🎤 User started speaking...")
 
-    @assistant.on("user_stopped_speaking")
+    @session.on("user_stopped_speaking")
     def on_user_stopped_speaking():
         print("🎤 User stopped speaking")
 
-    @assistant.on("agent_speech_committed")
+    @session.on("agent_speech_committed")
     def on_agent_speech(msg: llm.ChatMessage):
         print(f"🤖 Agent: {msg.content}")
 
-    @assistant.on("function_calls_collected")
+    @session.on("function_calls_collected")
     def on_function_calls(calls):
         for call in calls:
             print(f"🔧 Calling function: {call.function_info.name}")
@@ -270,11 +269,11 @@ async def entrypoint(ctx: JobContext):
     # Connect to the LiveKit room
     await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
 
-    # Start the assistant
-    assistant.start(ctx.room)
+    # Start the agent session
+    await session.start(ctx.room)
 
     # Initial greeting
-    await assistant.say(
+    await session.say(
         "Hello! Welcome to Jahongir Hotels. "
         "I'm your voice assistant. How can I help you today?"
     )
