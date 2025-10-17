@@ -19,6 +19,8 @@ from livekit.agents import (
     Agent,
     RoomIO,
     AgentSession,
+    function_tool,
+    RunContext,
 )
 from livekit.plugins import deepgram, openai, silero
 from dotenv import load_dotenv
@@ -44,9 +46,10 @@ http_client = httpx.AsyncClient(
 class HotelBookingAgent:
     """Hotel booking voice agent with function tools"""
 
-    @llm.ai_callable()
+    @function_tool
     async def check_availability(
         self,
+        context: RunContext,
         check_in_date: Annotated[str, llm.TypeInfo(description="Check-in date in YYYY-MM-DD format")],
         check_out_date: Annotated[str, llm.TypeInfo(description="Check-out date in YYYY-MM-DD format")],
         number_of_guests: Annotated[int, llm.TypeInfo(description="Number of guests")] = 1,
@@ -86,9 +89,10 @@ class HotelBookingAgent:
             print(f"Availability check error: {e}")
             return "I'm sorry, I'm having trouble connecting to our booking system. Please try again later."
 
-    @llm.ai_callable()
+    @function_tool
     async def get_guest_info(
         self,
+        context: RunContext,
         phone_number: Annotated[str, llm.TypeInfo(description="Guest phone number")],
     ):
         """
@@ -114,9 +118,10 @@ class HotelBookingAgent:
             print(f"Guest info error: {e}")
             return "I'm having trouble retrieving guest information. Let's proceed with your booking."
 
-    @llm.ai_callable()
+    @function_tool
     async def create_booking(
         self,
+        context: RunContext,
         check_in_date: Annotated[str, llm.TypeInfo(description="Check-in date YYYY-MM-DD")],
         check_out_date: Annotated[str, llm.TypeInfo(description="Check-out date YYYY-MM-DD")],
         hotel_name: Annotated[str, llm.TypeInfo(description="Hotel name")],
@@ -162,8 +167,8 @@ class HotelBookingAgent:
             print(f"Booking creation error: {e}")
             return "I'm sorry, I'm having trouble processing your booking right now. Please try again or contact our front desk."
 
-    @llm.ai_callable()
-    def get_current_date(self):
+    @function_tool
+    def get_current_date(self, context: RunContext):
         """
         Get the current date and time.
         Use this when the guest says "today", "tomorrow", "next week", etc.
