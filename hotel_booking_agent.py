@@ -50,9 +50,9 @@ class HotelBookingAgent:
     async def check_availability(
         self,
         context: RunContext,
-        check_in_date: Annotated[str, llm.TypeInfo(description="Check-in date in YYYY-MM-DD format")],
-        check_out_date: Annotated[str, llm.TypeInfo(description="Check-out date in YYYY-MM-DD format")],
-        number_of_guests: Annotated[int, llm.TypeInfo(description="Number of guests")] = 1,
+        check_in_date: str,
+        check_out_date: str,
+        number_of_guests: int = 1,
     ):
         """
         Check room availability at Jahongir Hotels for specific dates.
@@ -93,7 +93,7 @@ class HotelBookingAgent:
     async def get_guest_info(
         self,
         context: RunContext,
-        phone_number: Annotated[str, llm.TypeInfo(description="Guest phone number")],
+        phone_number: str,
     ):
         """
         Retrieve returning guest information by phone number.
@@ -122,15 +122,15 @@ class HotelBookingAgent:
     async def create_booking(
         self,
         context: RunContext,
-        check_in_date: Annotated[str, llm.TypeInfo(description="Check-in date YYYY-MM-DD")],
-        check_out_date: Annotated[str, llm.TypeInfo(description="Check-out date YYYY-MM-DD")],
-        hotel_name: Annotated[str, llm.TypeInfo(description="Hotel name")],
-        room_type: Annotated[str, llm.TypeInfo(description="Room type")],
-        guest_name: Annotated[str, llm.TypeInfo(description="Guest full name")],
-        guest_phone: Annotated[str, llm.TypeInfo(description="Guest phone number")],
-        guest_email: Annotated[str, llm.TypeInfo(description="Guest email address")],
-        number_of_guests: Annotated[int, llm.TypeInfo(description="Number of guests")] = 1,
-        special_requests: Annotated[str, llm.TypeInfo(description="Any special requests")] = "",
+        check_in_date: str,
+        check_out_date: str,
+        hotel_name: str,
+        room_type: str,
+        guest_name: str,
+        guest_phone: str,
+        guest_email: str,
+        number_of_guests: int = 1,
+        special_requests: str = "",
     ):
         """
         Create a hotel booking with all guest details.
