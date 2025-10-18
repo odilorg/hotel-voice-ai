@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+</head>
+<body>
+    <h1>WebSocket Connection Test</h1>
+    <button onclick="testWebSocket()">Test WebSocket Connection</button>
+    <div id="result"></div>
+
+    <script>
+        function testWebSocket() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing WebSocket connection...<br>';
+
+            // Test both ws:// and wss:// protocols
+            const urls = [
+                'ws://62.72.22.205:7880/',
+                'wss://62.72.22.205:7880/'
+            ];
+
+            urls.forEach(url => {
+                resultDiv.innerHTML += `Trying ${url}... `;
+                try {
+                    const ws = new WebSocket(url);
+                    ws.onopen = () => {
+                        resultDiv.innerHTML += `<span style="color: green;">✓ CONNECTED</span><br>`;
+                        ws.close();
+                    };
+                    ws.onerror = (error) => {
+                        resultDiv.innerHTML += `<span style="color: red;">✗ FAILED: ${error}</span><br>`;
+                    };
+                    ws.onclose = () => {
+                        resultDiv.innerHTML += `(closed)<br>`;
+                    };
+                } catch (error) {
+                    resultDiv.innerHTML += `<span style="color: red;">✗ ERROR: ${error}</span><br>`;
+                }
+            });
+        }
+    </script>
+</body>
+</html>
