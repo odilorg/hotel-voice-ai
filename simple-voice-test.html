@@ -166,8 +166,8 @@
         function checkLiveKit() {
             log('Checking for LiveKit global object...');
 
-            // Check all possible global names
-            const globals = ['livekit', 'LiveKitClient', 'LiveKit', 'livekitClient'];
+            // Check all possible global names - including the actual variable name
+            const globals = ['LivekitClient', 'livekit', 'LiveKitClient', 'LiveKit', 'livekitClient'];
             let found = null;
 
             for (const globalName of globals) {
@@ -200,8 +200,8 @@
                 updateStatus('Connecting to voice agent...');
                 document.getElementById('connectBtn').disabled = true;
 
-                // Get LiveKit client
-                const livekit = window.livekit || window.LiveKitClient || window.LiveKit || window.livekitClient;
+                // Get LiveKit client with correct variable name
+                const livekit = window.LivekitClient || window.livekit || window.LiveKitClient || window.LiveKit || window.livekitClient;
 
                 if (!livekit) {
                     throw new Error('LiveKit client not available');
