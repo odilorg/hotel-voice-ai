@@ -62,6 +62,9 @@ class HotelBookingAgent(Agent):
         Use this when the guest wants to know what rooms are available.
         """
         try:
+            # Debug logging
+            print(f"DEBUG check_availability: dates={check_in_date},{check_out_date} guests={number_of_guests}")
+
             # Reuse existing Laravel API endpoint from Telegram bot
             response = await http_client.post(
                 "/api/voice-agent/check-availability",
@@ -80,11 +83,28 @@ class HotelBookingAgent(Agent):
                 if not available_rooms:
                     return "I'm sorry, but there are no rooms available for those dates. Would you like to try different dates?"
 
-                room_list = ""
+                # Format room list with IDs for GPT-4 to extract
+                room_descriptions = []
                 for room in available_rooms[:5]:  # Limit to top 5 rooms for voice
-                    room_list += f"{room.get('unit_name', 'Room')} - {room.get('room_type', 'Room')}, "
+                    unit_name = room.get('unit_name', 'N/A')
+                    room_name = room.get('room_name', 'Room')
+                    property_name = room.get('property_name', 'Hotel')
+                    room_id = room.get('room_id')
+                    property_id = room.get('property_id')
+                    max_guests = room.get('max_guests', 2)
+                    
+                    # CRITICAL: Include IDs in structured format for GPT-4
+                    room_descriptions.append(
+                        f"Unit {unit_name} ({room_name}) at {property_name}, sleeps {max_guests} - "
+                        f"RoomID:{room_id} PropertyID:{property_id}"
+                    )
 
-                return f"I found {len(available_rooms)} available rooms including: {room_list[:-2]}. Would you like to book one of these?"
+                rooms_text = ". ".join(room_descriptions)
+                
+                return (
+                    f"I found {len(available_rooms)} available rooms: {rooms_text}. "
+                    f"Which room would you like to book? Please tell me the unit number."
+                )
             else:
                 return "I apologize, but I'm having trouble checking availability right now. Please try again in a moment."
 
@@ -127,32 +147,40 @@ class HotelBookingAgent(Agent):
         context: RunContext,
         check_in_date: str,
         check_out_date: str,
-        hotel_name: str,
-        room_type: str,
+        room_id: int,
+        property_id: int,
         guest_name: str,
         guest_phone: str,
         guest_email: str,
-        number_of_guests: int = 1,
+        num_adults: int = 2,
+        num_children: int = 0,
         special_requests: str = "",
     ):
         """
         Create a hotel booking with all guest details.
         Use this ONLY after confirming ALL details with the guest.
         Always summarize the booking before calling this function.
+        
+        IMPORTANT: You MUST get room_id and property_id from check_availability response.
+        Extract them from the "RoomID:XXX PropertyID:YYY" format in availability results.
         """
         try:
+            # Debug logging
+            print(f"DEBUG create_booking: room_id={room_id} property_id={property_id} guest={guest_name}")
+            
             # Reuse existing Laravel API endpoint
             response = await http_client.post(
                 "/api/voice-agent/create-booking",
                 json={
                     "check_in_date": check_in_date,
                     "check_out_date": check_out_date,
-                    "hotel_name": hotel_name,
-                    "room_type": room_type,
+                    "room_id": room_id,
+                    "property_id": property_id,
                     "guest_name": guest_name,
                     "guest_phone": guest_phone,
                     "guest_email": guest_email,
-                    "number_of_guests": number_of_guests,
+                    "num_adults": num_adults,
+                    "num_children": num_children,
                     "special_requests": special_requests,
                 }
             )
@@ -181,6 +209,10 @@ class HotelBookingAgent(Agent):
 
 # System prompt for the hotel booking agent
 SYSTEM_PROMPT = """
+# Current Date
+Today is 2025-10-18 (October 2025).
+IMPORTANT: When guests say "December 1st" they mean December 1st, 2025 (not 2023 or 2024).
+
 # Role
 You are a professional voice assistant for Jahongir Hotels in Tashkent, Uzbekistan.
 You help guests check room availability and make bookings over the phone.
@@ -222,6 +254,18 @@ You help guests check room availability and make bookings over the phone.
 - If room not available, suggest alternatives
 - Be apologetic if something goes wrong
 - Speak in a natural, conversational way
+- **CRITICAL**: When calling create_booking(), you MUST extract room_id and property_id from the availability results
+- The availability response contains "RoomID:XXX PropertyID:YYY" - extract these numbers and pass them as integers
+
+# Example Booking Flow
+User: "I want to book a room for December 1st to 4th"
+You: Call check_availability("2025-12-01", "2025-12-04", 2)
+Response: "Unit 12 (Standard Double) at Jahongir Hotel - RoomID:12345 PropertyID:41097"
+You: [SAVE room_id=12345, property_id=41097] "Great! Unit 12 is available. May I have your name, phone, and email?"
+User: "John Smith, +998901234567, john@email.com"
+You: "Perfect! Let me confirm: Unit 12 from December 1-4 for John Smith. Is this correct?"
+User: "Yes"
+You: Call create_booking("2025-12-01", "2025-12-04", 12345, 41097, "John Smith", "+998901234567", "john@email.com", 2, 0, "")
 
 # Language Support
 - Primarily English
@@ -275,17 +319,18 @@ async def entrypoint(ctx: JobContext):
     # Connect to the LiveKit room
     await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
 
-    # Start the agent session
+    # Start the agent session (this is now a task that runs in background)
     await session.start(room=ctx.room, agent=agent)
-
+    
+    # Session is now running, we can send greeting
+    await asyncio.sleep(0.5)  # Small delay to ensure session is ready
+    
     # Initial greeting
     await session.say(
         "Hello! Welcome to Jahongir Hotels. "
-        "I'm your voice assistant. How can I help you today?"
+        "I'm your voice assistant. How can I help you today?",
+        allow_interruptions=True
     )
-
-    # Keep connection alive
-    await asyncio.sleep(1)
 
 
 if __name__ == "__main__":
